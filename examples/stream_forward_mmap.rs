@@ -7,7 +7,7 @@ use v4l::prelude::*;
 use v4l::video::{Capture, Output};
 
 fn main() -> io::Result<()> {
-    let source = "/dev/video0";
+    /*let source = "/dev/video0";
     println!("Using source device: {}\n", source);
 
     // Determine which device to use
@@ -96,6 +96,6 @@ fn main() -> io::Result<()> {
     println!();
     println!("FPS: {}", count as f64 / start.elapsed().as_secs_f64());
     println!("MB/s: {}", megabytes_ps);
-
+*/
     Ok(())
 }

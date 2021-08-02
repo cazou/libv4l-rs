@@ -82,7 +82,7 @@ impl<'a> Drop for Stream<'a> {
 }
 
 impl<'a> StreamTrait for Stream<'a> {
-    type Item = [u8];
+    type Item = &'a [u8];
 
     fn start(&mut self) -> io::Result<()> {
         unsafe {
@@ -156,7 +156,7 @@ impl<'a, 'b> CaptureStream<'b> for Stream<'a> {
         Ok(self.arena_index)
     }
 
-    fn get(&self, index: usize) -> Option<&Self::Item> {
+    fn get(&self, index: usize) -> Option<Self::Item> {
         self.arena.get(index)
     }
 
@@ -164,7 +164,7 @@ impl<'a, 'b> CaptureStream<'b> for Stream<'a> {
         self.buf_meta.get(index)
     }
 
-    fn next(&'b mut self) -> io::Result<(&Self::Item, &Metadata)> {
+    fn next(&'b mut self) -> io::Result<(Self::Item, &Metadata)> {
         if !self.active {
             // Enqueue all buffers once on stream start
             for index in 0..self.arena.len() {

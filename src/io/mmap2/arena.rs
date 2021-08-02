@@ -6,18 +6,22 @@ use crate::io::arena::Arena as ArenaTrait;
 use crate::memory::Memory;
 use crate::v4l2;
 use crate::v4l_sys::*;
+use crate::buffer::Buffer;
+
+use std::mem::ManuallyDrop;
 
 /// Manage mapped buffers
 ///
 /// All buffers are unmapped in the Drop impl.
 /// In case of errors during unmapping, we panic because there is memory corruption going on.
-pub struct Arena<'a> {
+pub struct Arena {
     handle: Arc<Handle>,
-    bufs: Vec<&'a mut [u8]>,
+    bufs: Vec<Arc<ManuallyDrop<Vec<u8>>>>,
+    buf_sizes: Vec<usize>,
     buf_type: buffer::Type,
 }
 
-impl<'a> Arena<'a> {
+impl Arena {
     /// Returns a new buffer manager instance
     ///
     /// You usually do not need to use this directly.
@@ -31,12 +35,13 @@ impl<'a> Arena<'a> {
         Arena {
             handle,
             bufs: Vec::new(),
+            buf_sizes: Vec::new(),
             buf_type,
         }
     }
 }
 
-impl<'a> Drop for Arena<'a> {
+impl Drop for Arena {
     fn drop(&mut self) {
         if self.bufs.is_empty() {
             // nothing to do
@@ -59,8 +64,8 @@ impl<'a> Drop for Arena<'a> {
     }
 }
 
-impl<'a> ArenaTrait for Arena<'a> {
-    type Buffer = &'a [u8];
+impl ArenaTrait for Arena {
+    type Buffer = Arc<ManuallyDrop<Vec<u8>>>;
 
     fn allocate(&mut self, count: u32) -> io::Result<u32> {
         let mut v4l2_reqbufs: v4l2_requestbuffers;
@@ -98,9 +103,10 @@ impl<'a> ArenaTrait for Arena<'a> {
                     v4l2_buf.m.offset as libc::off_t,
                 )?;
 
-                let slice =
-                    slice::from_raw_parts_mut::<u8>(ptr as *mut u8, v4l2_buf.length as usize);
-                self.bufs.push(slice);
+                // FIXME: Vec will try to clear this data, but it shouldn't. How do I tell it that ?
+                let data = unsafe { Vec::from_raw_parts(ptr as *mut u8, v4l2_buf.length as usize, v4l2_buf.length as usize) };
+                let data = mem::ManuallyDrop::new(data);
+                self.bufs.push(Arc::new(data));
             }
         }
 
@@ -110,7 +116,8 @@ impl<'a> ArenaTrait for Arena<'a> {
     fn release(&mut self) -> io::Result<()> {
         for buf in &self.bufs {
             unsafe {
-                v4l2::munmap(buf.as_ptr() as *mut core::ffi::c_void, buf.len())?;
+                let data = buf.as_ptr();
+                v4l2::munmap(data as *mut core::ffi::c_void, buf.len())?;
             }
         }
 
@@ -132,21 +139,21 @@ impl<'a> ArenaTrait for Arena<'a> {
         Ok(())
     }
 
-    fn get(&self, index: usize) -> Option<&Self::Buffer> {
-        Some(self.bufs.get(index)?)
+    fn get(&self, index: usize) -> Option<Self::Buffer> {
+        Some(Arc::clone(self.bufs.get(index).unwrap()))
     }
 
-    fn get_mut(&mut self, index: usize) -> Option<&mut Self::Buffer> {
+    /*fn get_mut(&mut self, index: usize) -> Option<&mut Self::Buffer> {
         Some(self.bufs.get_mut(index)?)
-    }
+    }*/
 
-    unsafe fn get_unchecked(&self, index: usize) -> &Self::Buffer {
+    /*unsafe fn get_unchecked(&self, index: usize) -> &Self::Buffer {
         self.bufs.get_unchecked(index)
     }
 
     unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut Self::Buffer {
         self.bufs.get_unchecked_mut(index)
-    }
+    }*/
 
     fn len(&self) -> usize {
         self.bufs.len()

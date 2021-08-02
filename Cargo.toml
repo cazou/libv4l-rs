@@ -27,3 +27,7 @@ members = [
     "v4l-sys",
     "v4l2-sys",
 ]
+
+[[example]]
+name = "stream_capture_mmap"
+path = "examples/stream_capture_mmap.rs"

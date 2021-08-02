@@ -105,5 +105,6 @@ pub use {
 
 pub mod prelude {
     pub use crate::device::Device;
-    pub use crate::io::{mmap::Stream as MmapStream, userptr::Stream as UserptrStream};
+    //pub use crate::io::{mmap::Stream as MmapStream, userptr::Stream as UserptrStream};
+    pub use crate::io::{mmap2::Stream as MmapStream};
 }

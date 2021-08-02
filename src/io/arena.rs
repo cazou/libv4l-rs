@@ -1,8 +1,8 @@
-use std::io;
+use std::{io, sync::Arc};
 
 /// Manage buffers for a device
 pub trait Arena {
-    type Buffer: ?Sized;
+    type Buffer: Sized;
 
     /// Allocate buffers
     ///
@@ -17,16 +17,16 @@ pub trait Arena {
     fn release(&mut self) -> io::Result<()>;
 
     /// Access a single buffer
-    fn get(&self, index: usize) -> Option<&Self::Buffer>;
+    fn get(&self, index: usize) -> Option<Self::Buffer>;
 
     /// Access a single buffer
-    fn get_mut(&mut self, index: usize) -> Option<&mut Self::Buffer>;
+    //fn get_mut(&mut self, index: usize) -> Option<&mut Self::Buffer>;
 
     /// Access a single buffer without bounds checking
-    unsafe fn get_unchecked(&self, index: usize) -> &Self::Buffer;
+    //unsafe fn get_unchecked(&self, index: usize) -> &Self::Buffer;
 
     /// Access a single buffer without bounds checking
-    unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut Self::Buffer;
+    //unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut Self::Buffer;
 
     /// Number of buffers
     fn len(&self) -> usize;

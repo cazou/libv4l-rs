@@ -14,7 +14,7 @@ use v4l::video::Capture;
 use v4l::{Format, FourCC};
 
 fn main() -> io::Result<()> {
-    let path = "/dev/video0";
+/*    let path = "/dev/video0";
     println!("Using device: {}\n", path);
 
     // Allocate 4 buffers by default
@@ -183,5 +183,6 @@ fn main() -> io::Result<()> {
             t1.duration_since(t0).as_millis(),
             t0.elapsed().as_millis()
         );
-    });
+    });*/
+    Ok(())
 }

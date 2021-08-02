@@ -1,7 +1,13 @@
 use bitflags::bitflags;
-use std::fmt;
+use std::{fmt, slice};
+use std::io;
 
 use crate::timestamp::Timestamp;
+use std::rc::Rc;
+use std::sync::Arc;
+use crate::io::mmap2::Stream as Stream2;
+use crate::io::mmap2::StreamInt;
+use std::mem::ManuallyDrop;
 
 /// Buffer type
 ///
@@ -111,4 +117,58 @@ pub struct Metadata {
     pub timestamp: Timestamp,
     /// Sequence number, counting the frames
     pub sequence: u32,
+}
+
+pub struct Buffer {
+    data: Arc<ManuallyDrop<Vec<u8>>>, // Instead of *mut u8 ??
+    len: usize,
+    index: u32,
+    pub metadata: Metadata,
+    stream: Arc<StreamInt>,
+}
+
+impl Drop for Buffer {
+    fn drop(&mut self) {
+        println!("> Dropping index {}", self.index);
+        match self.stream.queue(self.index as usize) {
+            Err(e) => println!("{}", e),
+            Ok(_) => {},
+        };
+    }
+}
+
+impl Buffer {
+    fn new(data: Arc<ManuallyDrop<Vec<u8>>>, index: u32, meta: Metadata, stream: Arc<StreamInt>) -> Buffer { //TODO: Remove me
+        Buffer {
+            data: Arc::clone(&data),
+            len: meta.bytesused as usize,
+            index,
+            metadata: meta,
+            stream: Arc::clone(&stream),
+        }
+    }
+
+    pub fn from_queue(stream: Arc<StreamInt>) -> io::Result<Buffer> {
+        let (index, meta) = stream.dequeue().unwrap();
+        let buf = stream.get(index);
+        let vec = match buf {
+            Some(ptr) => ptr,
+            None => return Err(io::Error::from(io::ErrorKind::NotFound)),
+        };
+
+        Ok(Buffer::new(
+            vec,
+            index as u32,
+            meta,
+            Arc::clone(&stream)
+        ))
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.data[..]
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    } //TODO: Remove me
 }
